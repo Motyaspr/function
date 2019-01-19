@@ -17,14 +17,10 @@ memory
 /Users/motyaspr/CLionProjects/Function/main.cpp
 iostream
 -
+cassert
+-
 function.h
 /Users/motyaspr/CLionProjects/Function/function.h
-string
--
-vector
--
 functional
--
-cassert
 -
 
