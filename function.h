@@ -26,7 +26,6 @@ public:
     function(std::nullptr_t) noexcept : holder(nullptr), is_small(false) {}
 
     function(const function &other) {
-        function_holder_base * tmp = (function_holder_base *)other.buf;
         is_small = other.is_small;
         if (other.is_small)
             memcpy(buf, other.buf, B_SIZE);
@@ -140,10 +139,6 @@ public:
         void create_small_copy(void *adr) override {
             new(adr) function_holder<Func>(f);
         }
-
-        /*void create_big_copy(void *adr) override {
-            new(adr) std::unique_ptr<function_holder<Func>>(new function_holder<Func>(f));
-        }*/
 
         Func f;
 

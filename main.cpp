@@ -2,6 +2,7 @@
 #include <cassert>
 #include "function.h"
 #include <functional>
+#include <vector>
 
 int foo() {
     return 1;
@@ -84,8 +85,26 @@ void test_diffTypes() {
     assert(pi() == 3.14);
 }
 
+/*void test_copy() {
+    std::vector<int> buffer(100, -1);
+    function<int()> g;
+    {
+        function<int()> f = [buffer]() {
+            return buffer[99];
+        };
+        g = f;
+        function<int()> h(f);
+        assert(f() == -1);
+        assert(g() == -1);
+        assert(h() == -1);
+    }
+    assert(g() == -1);
+}*/
+
+
 
 void NIKITOZZZZ_test() {
+    // тут хз, мб плохой тест (для решение нужна убрать const после invoke/call/etc)
     int foo = 1;
     double bar = 3;
     double bar2 = 3;
@@ -116,6 +135,7 @@ void all_test() {
     test_swap();
     test_lambda();
     test_diffTypes();
+  //  test_copy();
     NIKITOZZZZ_test();
 }
 
