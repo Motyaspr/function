@@ -1,0 +1,30 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/motyaspr/CLionProjects/Function/function.h
+utility
+-
+variant
+-
+memory
+-
+
+/Users/motyaspr/CLionProjects/Function/main.cpp
+iostream
+-
+function.h
+/Users/motyaspr/CLionProjects/Function/function.h
+string
+-
+vector
+-
+functional
+-
+cassert
+-
+
