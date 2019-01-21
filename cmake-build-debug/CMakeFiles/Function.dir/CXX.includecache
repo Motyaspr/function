@@ -17,12 +17,8 @@ memory
 /Users/motyaspr/CLionProjects/Function/main.cpp
 iostream
 -
-cassert
+functional
 -
 function.h
 /Users/motyaspr/CLionProjects/Function/function.h
-functional
--
-vector
--
 

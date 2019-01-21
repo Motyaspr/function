@@ -7,137 +7,132 @@
 
 static const size_t B_SIZE = 64;
 
+enum OBJECT_TYPE {
+    EMPTY = 0,
+    SMALL,
+    BIG
+};
 
-template <typename T>
+template<typename T>
 class function;
 
-template <typename Ret, typename ...Args>
-class function<Ret (Args...)> {
+template<typename Ret, typename ...Args>
+class function<Ret(Args...)> {
 public:
     Ret operator()(Args...args) const {
-        if (!is_small)
-            return holder->invoke(args...);
-        function_holder_base * tmp= (function_holder_base *)buf;
-        return tmp->invoke(args...);
+        switch (type) {
+            case EMPTY:
+                throw std::bad_function_call();
+            case SMALL:
+                return ((function_holder_base *) buf)->invoke(std::forward<Args>(args)...);
+            case BIG:
+                return holder->invoke(std::forward<Args>(args)...);
+        }
     }
 
-    function() noexcept : holder(nullptr), is_small(false) {}
+    function() noexcept : holder(nullptr), type(EMPTY) {}
 
-    function(std::nullptr_t) noexcept : holder(nullptr), is_small(false) {}
+    function(std::nullptr_t) noexcept : holder(nullptr), type(EMPTY) {}
 
     function(const function &other) {
-        is_small = other.is_small;
-        if (other.is_small)
-            memcpy(buf, other.buf, B_SIZE);
-        else
-            holder = other.holder->copy();
+        function_holder_base *c = (function_holder_base *) other.buf;
+        type = other.type;
+        switch (type) {
+            case EMPTY:
+                holder = nullptr;
+                break;
+            case SMALL:
+                c->create_small_copy(buf);
+                break;
+            case BIG:
+                holder = other.holder->copy();
+                break;
+        }
 
     }
 
-    function(function &&other) noexcept{
-        function_holder_base * tmp = (function_holder_base *)other.buf;
-        is_small = other.is_small;
-        if (other.is_small)
-            tmp->create_small_copy(buf);
-        else
-            new(buf) std::unique_ptr<function_holder_base>(std::move(other.holder));
+    function(function &&other) noexcept : holder(nullptr) {
+        std::swap(buf, other.buf);
+        std::swap(type, other.type);
+        other.type = EMPTY;
     }
 
     function &operator=(const function &other) {
         function tmp(other);
-        swap(other);
+        swap(tmp);
         return *this;
     }
 
     function &operator=(function &&other) noexcept {
-        function_holder_base * tmp = (function_holder_base *)other.buf;
-        if (is_small)
-            ((function_holder_base *) other.buf)->~function_holder_base();
-        else
-            holder.reset();
-
-        is_small = other.is_small;
-        if (other.is_small)
-            tmp->create_small_copy(buf);
-        else
-            new(buf) std::unique_ptr<function_holder_base>(std::move(other.holder));
+        auto tmp(std::forward<function>(other));
+        swap(tmp);
         return *this;
     }
 
-    void swap(function& other) noexcept {
+    void swap(function &other) noexcept {
         std::swap(buf, other.buf);
-        std::swap(is_small, other.is_small);
+        std::swap(other.type, type);
     }
 
     explicit operator bool() const noexcept {
-        if (is_small)
-            return true;
-        return static_cast<bool>(holder);
+        return type != EMPTY;
     }
 
-    template<typename T>
-    function &operator=(T t) {
-        if (sizeof(T) < B_SIZE){
-            is_small = true;
-            new(buf) function_holder<T>(t);
-        }
-        else{
-            is_small = false;
-            holder = std::make_unique<function_holder<T>>(std::move(t));
-        }
-        return *this;
-    }
 
     template<typename T>
     function(T t) {
-        if (sizeof(T) < B_SIZE){
-            is_small = true;
-            new(buf) function_holder<T>(t);
-        }
-        else{
-            is_small = false;
-            holder = std::make_unique<function_holder<T>>(std::move(t));
+        if constexpr (sizeof(function_holder<T>(t)) <= B_SIZE) {
+            type = SMALL;
+            new(buf) function_holder<T>(std::move(t));
+        } else {
+            type = BIG;
+            new(buf) std::unique_ptr<function_holder < T>>
+            (std::make_unique<function_holder < T>>
+            (std::move(t)));
         }
     }
 
     ~function() {
-        if (is_small) {
-            function_holder_base *m = (function_holder_base *) buf;
-            m->~function_holder_base();
+        if (type == SMALL) {
+            ((function_holder_base *) buf)->~function_holder_base();
         } else {
             holder.reset();
         }
     }
 
 
-
     class function_holder_base {
     public:
         function_holder_base() {};
+
         virtual ~function_holder_base() {};
+
         virtual Ret invoke(Args...) = 0;
-        virtual void create_small_copy(void *pos) = 0;
 
         virtual std::unique_ptr<function_holder_base> copy() const = 0;
+
+        virtual void create_small_copy(void *adr) = 0;
+
     };
 
-    template <typename Func>
+    template<typename Func>
     class function_holder : public function_holder_base {
     public:
-        function_holder(const Func& func) : f(func) {}
+        function_holder(const Func &func) : f(func) {}
 
-        ~function_holder() = default;
+        ~function_holder() override = default;
 
-         Ret invoke(Args...args){
-            return f(args...);
+        Ret invoke(Args...args) {
+            return f(std::forward<Args>(args)...);
+        }
+
+        void create_small_copy(void *adr) {
+            new(adr) function_holder<Func>(f);
+
         }
 
         std::unique_ptr<function_holder_base> copy() const override {
             return std::make_unique<function_holder<Func>>(f);
-        }
-
-        void create_small_copy(void *adr) override {
-            new(adr) function_holder<Func>(f);
         }
 
         Func f;
@@ -145,11 +140,12 @@ public:
     };
 
 private:
-union {
-    std::unique_ptr<function_holder_base> holder;
-    char buf[B_SIZE];
-};
-    bool is_small;
+    union {
+        std::unique_ptr<function_holder_base> holder;
+        char buf[B_SIZE];
+    };
+    OBJECT_TYPE type;
+
 };
 
 #endif /
