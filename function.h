@@ -35,6 +35,10 @@ public:
     function(std::nullptr_t) noexcept : holder(nullptr), type(EMPTY) {}
 
     function(const function &other) {
+        if (other.type == EMPTY){
+            type = other.type;
+            return;
+        }
         function_holder_base *c = (function_holder_base *) other.buf;
         type = other.type;
         switch (type) {
@@ -93,6 +97,8 @@ public:
     }
 
     ~function() {
+        if (type == EMPTY)
+            return;
         if (type == SMALL) {
             ((function_holder_base *) buf)->~function_holder_base();
         } else {
@@ -148,4 +154,4 @@ private:
 
 };
 
-#endif /
+#endif
