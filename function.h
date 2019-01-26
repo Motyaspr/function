@@ -55,10 +55,9 @@ public:
 
     }
 
-    function(function &&other) noexcept : holder(nullptr) {
+    function(function &&other) noexcept : holder(nullptr), type(EMPTY) {
         std::swap(buf, other.buf);
         std::swap(type, other.type);
-        other.type = EMPTY;
     }
 
     function &operator=(const function &other) {
